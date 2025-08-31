@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ATH Uzaklık Hesaplama (BIST)</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <h1 class="brand">📈 ATH Uzaklık Hesaplama</h1>
+      <nav class="actions">
+        <a class="action" href="/" aria-current="page">Tek Hisse</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <h2 class="panel-title">Veri Kaynağı: Twelve Data</h2>
+      <p class="muted">Sembol ve borsa seçin, <strong>Hesapla</strong> butonuna basın.</p>
+
+      <div class="form-row">
+        <label class="field">
+          <span class="field-label">Sembol</span>
+          <input id="symbol" placeholder="THYAO" aria-label="Sembol" />
+        </label>
+
+        <label class="field">
+          <span class="field-label">Borsa</span>
+          <select id="exchange" aria-label="Borsa">
+            <option value="BIST" selected>BIST</option>
+            <option value="NONE">— boş (US)</option>
+          </select>
+        </label>
+
+        <button type="button" id="runBtn" class="btn btn-primary">Hesapla</button>
+      </div>
+
+      <p class="hint muted">Örnek: <code>THYAO</code> + <code>BIST</code> veya <code>AAPL</code> + <code>NONE</code></p>
+      <button type="button" id="pingBtn" class="btn" style="margin-top:8px">Bağlantıyı test et</button>
+    </section>
+
+    <section class="results panel" id="out" aria-live="polite">
+      <div class="placeholder muted">Sonuçlar burada görünecek.</div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p class="muted">© <span id="y"></span> BIST ATH • Kaynak: Twelve Data • Bu sayfa, arka planda <code>/metrics</code> endpoint’ini çağırır.</p>
+    </div>
+  </footer>
+
+  <script>
+    // 8010’dan açarsan '' (aynı origin), PyCharm 63342’den açarsan 8010’a gider
+    const API_BASE = (location.port === '8010' || location.origin.includes('127.0.0.1:8010') || location.origin.includes('localhost:8010')) ? '' : 'http://127.0.0.1:8010';
+
+    const btn = document.getElementById('runBtn');
+    const out = document.getElementById('out');
+    const symbolInput = document.getElementById('symbol');
+    const exchangeSel = document.getElementById('exchange');
+
+    function escapeHtml(str) {
+      return str.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+    }
+    function renderLoading() {
+      out.innerHTML = '<div class="loading"><span class="spinner"></span> Yükleniyor...</div>';
+    }
+    function renderError(msg) {
+      out.innerHTML = '<div class="error">'+ escapeHtml(msg) +'</div>';
+    }
+    function renderData(data) {
+      out.innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <h3 class="symbol">${data.symbol}</h3>
+            <span class="source muted">Twelve Data</span>
+          </div>
+          <div class="metrics">
+            <div class="metric"><span>Son Kapanış</span><b>${Number(data.last_close).toFixed(2)}</b></div>
+            <div class="metric"><span>ATH</span><b>${Number(data.ath).toFixed(2)}</b></div>
+            <div class="metric"><span>ATH’a Uzaklık</span><b>${Number(data.to_ath_pct).toFixed(2)}%</b></div>
+            <div class="metric"><span>52 Haftalık Zirve</span><b>${Number(data.wk52_high).toFixed(2)}</b></div>
+            <div class="metric"><span>52 Haftaya Uzaklık</span><b>${Number(data.to_52w_pct).toFixed(2)}%</b></div>
+          </div>
+          <details class="raw"><summary>Ham JSON</summary><pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre></details>
+        </div>
+      `;
+    }
+
+    async function run() {
+      const symbol = symbolInput.value.trim();
+      const exchange = exchangeSel.value;
+      if (!symbol) { renderError('Lütfen bir sembol gir.'); return; }
+      renderLoading();
+      try {
+        const url = `${API_BASE}/metrics?symbol=${encodeURIComponent(symbol)}&exchange=${encodeURIComponent(exchange)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'İstek başarısız');
+        renderData(data);
+      } catch (e) {
+        renderError(e.message);
+      }
+    }
+
+    btn.addEventListener('click', run);
+    symbolInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') run(); });
+    document.getElementById('y').textContent = new Date().getFullYear();
+
+    // Basit bağlantı testi
+    const pingBtn = document.getElementById('pingBtn');
+    pingBtn?.addEventListener('click', async () => {
+      out.innerHTML = '<div class="loading"><span class="spinner"></span> /health...</div>';
+      try {
+        const r = await fetch(`${API_BASE}/health`);
+        const j = await r.json();
+        out.innerHTML = `<div class="card"><pre>${escapeHtml(JSON.stringify(j, null, 2))}</pre></div>`;
+      } catch (e) {
+        out.innerHTML = `<div class="error">Bağlantı hatası: ${escapeHtml(String(e))}</div>`;
+      }
+    });
+  </script>
+</body>
+</html>
