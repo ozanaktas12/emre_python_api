@@ -55,8 +55,9 @@
 
   <script>
     // 8010’dan açarsan '' (aynı origin), PyCharm 63342’den açarsan 8010’a gider
-    const API_BASE = (location.port === '8010' || location.origin.includes('127.0.0.1:8010') || location.origin.includes('localhost:8010')) ? '' : 'http://127.0.0.1:8010';
-
+const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://127.0.0.1:8010'
+  : '';
     const btn = document.getElementById('runBtn');
     const out = document.getElementById('out');
     const symbolInput = document.getElementById('symbol');
