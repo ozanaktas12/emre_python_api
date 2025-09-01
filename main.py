@@ -84,7 +84,10 @@ app = FastAPI(title="ATH & 52W API", version="0.1.0")
 # CORS (63342 vs 8010 gibi farklı portlardan açarsan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://emre-python-api.onrender.com",   # backend (aynı domain)
+        # "https://SENIN-VERCEL-ADIN.vercel.app", # (ileride ayrı frontend olursa)
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
